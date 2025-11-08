@@ -5,11 +5,8 @@ import floorplanImg from "./floorplan.jpeg"; // make sure name/path matches
 // Desks + rooms positions in % of image
 const RESOURCES = [
   // Top row desks (adjust x/y as needed)
-  { id: "desk-t-01", type: "desk", label: "Desk T01", x: 8, y: 18 },
-  { id: "desk-t-02", type: "desk", label: "Desk T02", x: 13, y: 18 },
-  { id: "desk-t-03", type: "desk", label: "Desk T03", x: 18, y: 18 },
-  { id: "desk-t-04", type: "desk", label: "Desk T04", x: 23, y: 18 },
-  { id: "desk-t-05", type: "desk", label: "Desk T05", x: 28, y: 18 },
+  { id: "desk-t-01", type: "desk", label: "Desk T01", x: 15, y: 18 },
+  
 
   // Bottom row desks
   { id: "desk-b-01", type: "desk", label: "Desk B01", x: 8, y: 78 },
