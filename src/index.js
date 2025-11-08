@@ -2,12 +2,18 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
+import { AuthenticationTitle } from './AuthenticationTitle';
+import { MantineProvider } from '@mantine/core';
+import '@mantine/core/styles.css';
 import reportWebVitals from './reportWebVitals';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <App />
+    {/* 👇 You must have this wrapper 👇 */}
+    <MantineProvider defaultColorScheme="auto">
+      <AuthenticationTitle />
+    </MantineProvider>
   </React.StrictMode>
 );
 

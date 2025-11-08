@@ -1,25 +1,50 @@
-import logo from './logo.svg';
-import './App.css';
+// src/App.js
+
+import './App.css'; 
 
 function App() {
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
+      <header className="login-header"> 
+        
+        {/* TITLUL */}
+        <h1 className="login-title">Bine ați venit pe pagina de logare a Molson Coors!</h1>
+        
+        
+        {/* CONTAINER PENTRU INPUT-URI */}
+        <div className="login-visual-container">
+            
+            {/* DREPTUNGHIUL 1: Nume utilizator */}
+            <div className="input-group">
+                <label htmlFor="username">Nume utilizator</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    placeholder=" " // Lasă dreptunghiul gol vizual
+                    disabled // Asigură că nu se poate scrie
+                />
+            </div>
+            
+            {/* DREPTUNGHIUL 2: Parolă */}
+            <div className="input-group">
+                <label htmlFor="password">Parolă</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    placeholder=" " 
+                    disabled // Asigură că nu se poate scrie
+                />
+            </div>
+            
+            {/* Un buton vizual, nefuncțional */}
+            <button className="login-button" disabled>
+                Logare (Vizual)
+            </button>
+            
+        </div>
       </header>
     </div>
   );
+  
 }
-
 export default App;
