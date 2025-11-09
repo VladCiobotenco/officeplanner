@@ -114,8 +114,8 @@ body {
 .resource-pin {
   position: absolute;
   transform: translate(-50%, -50%);
-  width: 15px;
-  height: 15px;
+  width: 13px;
+  height: 13px;
   border-radius: 999px;
   border: 1px solid #f9fafb;
   display: flex;
@@ -142,7 +142,7 @@ body {
   background: #ef4444;
 }
 .resource-selected {
-  box-shadow: 0 0 0 3px #fbbf24;
+  box-shadow: 0 0 0 1px #fbbf24;
   transform: translate(-50%, -50%) scale(1.15);
 }
 .resource-pin:hover {
