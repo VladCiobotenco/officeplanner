@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import "./App.css";
-import floorplanImg from "./floorplan.jpeg"; // make sure name/path matches
+import floorplanImg from "./floorplan.jpeg";
 
 // Desks + rooms positions in % of image
 const RESOURCES = [
@@ -70,7 +70,7 @@ const RESOURCES = [
   { id: "desk-t-48", type: "desk", label: "Desk T48", x: 92, y: 21 },
 
   //top row desks left
-   { id: "desk-t-49", type: "desk", label: "Desk T49", x: 103, y: 12 },
+  { id: "desk-t-49", type: "desk", label: "Desk T49", x: 103, y: 12 },
   { id: "desk-t-50", type: "desk", label: "Desk T50", x: 103, y: 16.5 },
   { id: "desk-t-51", type: "desk", label: "Desk T51", x: 103, y: 21 },
 
@@ -151,7 +151,7 @@ const RESOURCES = [
   { id: "desk-t-108", type: "desk", label: "Desk T108", x: 178.5, y: 21 },
 
   // Bottom row desks right
-    { id: "desk-b-01", type: "desk", label: "Desk B01", x: 31.5, y: 79.5 },
+  { id: "desk-b-01", type: "desk", label: "Desk B01", x: 31.5, y: 79.5 },
   { id: "desk-b-02", type: "desk", label: "Desk B02", x: 31.5, y: 84 },
   { id: "desk-b-03", type: "desk", label: "Desk B03", x: 31.5, y: 89 },
 
@@ -295,8 +295,6 @@ const RESOURCES = [
   { id: "desk-b-107", type: "desk", label: "Desk B107", x: 178.5, y: 84 },
   { id: "desk-b-108", type: "desk", label: "Desk B108", x: 178.5, y: 89 },
 
-
-
   //big boss rooms
   { id: "Admin-1", type: "admin", label: "Big Boss Office", x: 185, y: 17 },
   { id: "Admin-2", type: "admin", label: "Big Boss Office", x: 185, y: 77.5 },
@@ -313,8 +311,8 @@ const RESOURCES = [
   //bubbles
   { id: "Bub-1", type: "bub", label: "Bubble Room 1", x: 27.5, y: 14 },
   { id: "Bub-2", type: "bub", label: "Bubble Room 2", x: 97.5, y: 22.5 },
-  { id: "Bub-3", type: "bub", label: "Bubble Room 1", x: 27.5, y: 85.5 },
-  { id: "Bub-4", type: "bub", label: "Bubble Room 2", x: 97.5, y: 92 },
+  { id: "Bub-3", type: "bub", label: "Bubble Room 3", x: 27.5, y: 85.5 },
+  { id: "Bub-4", type: "bub", label: "Bubble Room 4", x: 97.5, y: 92 },
 
   //wellness rooms
   { id: "Well-1", type: "wellness", label: "Wellness Room 1", x: 162, y: 40 },
@@ -328,6 +326,41 @@ const RESOURCES = [
   { id: "Beerpong-1", type: "beerpong", label: "Beer Zone", x: 16.5, y: 48 },
 ];
 
+// --- STATIC DEPARTMENT BOOKINGS (3 employees per department) ---
+const DEPARTMENT_BOOKINGS = {
+  Finance: [
+    { employee: "Ana F.", deskId: "desk-t-01", start: "09:00", end: "11:00" },
+    { employee: "Mihai F.", deskId: "desk-t-22", start: "11:00", end: "13:00" },
+    { employee: "Ioana F.", deskId: "desk-t-12", start: "14:00", end: "17:00" },
+  ],
+  Commercial: [
+    { employee: "Andrei C.", deskId: "desk-t-04", start: "09:00", end: "12:00" },
+    { employee: "Bianca C.", deskId: "desk-t-27", start: "12:00", end: "15:00" },
+    { employee: "Radu C.", deskId: "desk-t-46", start: "15:00", end: "18:00" },
+  ],
+  HR: [
+    { employee: "Alexandra H.", deskId: "desk-b-12", start: "08:30", end: "11:30" },
+    { employee: "George H.", deskId: "desk-b-58", start: "11:30", end: "14:30" },
+    { employee: "Laura H.", deskId: "desk-b-26", start: "14:30", end: "17:30" },
+  ],
+  IT: [
+    { employee: "Vlad I.", deskId: "desk-t-10", start: "09:00", end: "13:00" },
+    { employee: "Daria I.", deskId: "desk-t-11", start: "10:00", end: "16:00" },
+    { employee: "Tudor I.", deskId: "desk-t-12", start: "13:00", end: "18:00" },
+  ],
+  "Marketing&Strategy": [
+    { employee: "Maria M.", deskId: "desk-t-13", start: "09:30", end: "12:30" },
+    { employee: "Oana M.", deskId: "desk-t-14", start: "12:30", end: "15:30" },
+    { employee: "Paul M.", deskId: "desk-t-15", start: "15:30", end: "18:00" },
+  ],
+  "Sales and Commercial": [
+    { employee: "Iris S.", deskId: "desk-t-16", start: "08:00", end: "11:00" },
+    { employee: "Cristi S.", deskId: "desk-t-17", start: "11:00", end: "14:00" },
+    { employee: "Teodora S.", deskId: "desk-t-18", start: "14:00", end: "17:00" },
+  ],
+};
+
+const DEPARTMENTS = Object.keys(DEPARTMENT_BOOKINGS);
 
 // key is resource+date
 function makeBookingKey(resourceId, dateStr) {
@@ -344,9 +377,29 @@ function intervalsOverlap(s1, e1, s2, e2) {
   return s1 < e2 && s2 < e1;
 }
 
+// department bookings as "virtual" bookings for a given resource
+function getDeptBookingsForResource(resourceId) {
+  const result = [];
+  for (const [dept, items] of Object.entries(DEPARTMENT_BOOKINGS)) {
+    for (const b of items) {
+      if (b.deskId === resourceId) {
+        result.push({
+          resourceId,
+          start: b.start,
+          end: b.end,
+          user: b.employee,
+          department: dept,
+          isDept: true,
+        });
+      }
+    }
+  }
+  return result;
+}
+
 function App() {
   const [selectedResourceId, setSelectedResourceId] = useState(
-    RESOURCES[0]?.id
+    RESOURCES[0]?.id || null
   );
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().slice(0, 10) // YYYY-MM-DD
@@ -355,7 +408,10 @@ function App() {
   const [endTime, setEndTime] = useState("20:00");
   const [zoom, setZoom] = useState(1);
 
-  // bookings: { key: [ { resourceId, date, start, end, user } ] }
+  // department "view" filter (for highlighting & list)
+  const [selectedDepartment, setSelectedDepartment] = useState("");
+
+  // user-created bookings: { key: [ { resourceId, date, start, end, user } ] }
   const [bookings, setBookings] = useState({});
 
   const selectedResource = useMemo(
@@ -363,35 +419,48 @@ function App() {
     [selectedResourceId]
   );
 
+  const isRequestType =
+  selectedResource &&
+  ["room", "wellness", "admin", "bub"].includes(selectedResource.type);
+
+const primaryButtonLabel = isRequestType ? "Request" : "Book interval";
+
   const bookingKeyForSelected = useMemo(() => {
     if (!selectedResource) return null;
     return makeBookingKey(selectedResource.id, selectedDate);
   }, [selectedResource, selectedDate]);
 
-  const bookingsForSelected = useMemo(() => {
+  const userBookingsForSelected = useMemo(() => {
     if (!bookingKeyForSelected) return [];
     return bookings[bookingKeyForSelected] || [];
   }, [bookings, bookingKeyForSelected]);
+
+  const deptBookingsForSelected = useMemo(() => {
+    if (!selectedResource) return [];
+    return getDeptBookingsForResource(selectedResource.id);
+  }, [selectedResource]);
+
+  const bookingsForSelected = useMemo(
+    () => [...userBookingsForSelected, ...deptBookingsForSelected],
+    [userBookingsForSelected, deptBookingsForSelected]
+  );
 
   const hasValidInterval =
     startTime &&
     endTime &&
     parseTimeToMinutes(endTime) > parseTimeToMinutes(startTime);
 
-  // is there something booked overlapping the selected interval
+  // is there something booked overlapping the selected interval (user + employees)
   const isSelectedBooked = useMemo(() => {
-    if (!bookingKeyForSelected) return false;
-    const current = bookingsForSelected;
-
     if (!hasValidInterval) {
-      // no valid interval -> just show if anything that day
-      return current.length > 0;
+      // invalid interval -> we don't care about overlap yet
+      return bookingsForSelected.length > 0;
     }
 
     const s = parseTimeToMinutes(startTime);
     const e = parseTimeToMinutes(endTime);
 
-    return current.some((b) =>
+    return bookingsForSelected.some((b) =>
       intervalsOverlap(
         s,
         e,
@@ -399,13 +468,10 @@ function App() {
         parseTimeToMinutes(b.end)
       )
     );
-  }, [bookingKeyForSelected, bookingsForSelected, hasValidInterval, startTime, endTime]);
+  }, [bookingsForSelected, hasValidInterval, startTime, endTime]);
 
-    const canBook =
-    !!selectedResource &&
-    !!selectedDate &&
-    hasValidInterval &&
-    !isSelectedBooked;
+  const canBook =
+    !!selectedResource && !!selectedDate && hasValidInterval && !isSelectedBooked;
 
   const handleBook = () => {
     if (!selectedResource || !selectedDate) return;
@@ -423,9 +489,12 @@ function App() {
     }
 
     const key = makeBookingKey(selectedResource.id, selectedDate);
-    const existing = bookings[key] || [];
+    const existingUserBookings = bookings[key] || [];
+    const deptBookingsForRes = getDeptBookingsForResource(selectedResource.id);
 
-    const hasOverlap = existing.some((b) =>
+    const allExisting = [...existingUserBookings, ...deptBookingsForRes];
+
+    const hasOverlap = allExisting.some((b) =>
       intervalsOverlap(
         startMinutes,
         endMinutes,
@@ -463,12 +532,7 @@ function App() {
 
     const userName = "You";
     const filtered = existing.filter(
-      (b) =>
-        !(
-          b.start === startTime &&
-          b.end === endTime &&
-          b.user === userName
-        )
+      (b) => !(b.start === startTime && b.end === endTime && b.user === userName)
     );
 
     if (filtered.length === existing.length) {
@@ -494,6 +558,17 @@ function App() {
     });
   };
 
+  // department view data for highlighting and list
+  const departmentBookings = useMemo(() => {
+    if (!selectedDepartment) return [];
+    return DEPARTMENT_BOOKINGS[selectedDepartment] || [];
+  }, [selectedDepartment]);
+
+  const departmentDeskIds = useMemo(
+    () => departmentBookings.map((b) => b.deskId),
+    [departmentBookings]
+  );
+
   return (
     <div className="app">
       <div className="map-wrapper">
@@ -510,7 +585,13 @@ function App() {
             </div>
 
             <div className="map-viewport">
-              <div className="map-inner" style={{ transform: `scale(${zoom})` }}>
+              <div
+                className={
+                  "map-inner" +
+                  (selectedDepartment ? " map-inner--dept-filter" : "")
+                }
+                style={{ transform: `scale(${zoom})` }}
+              >
                 <img
                   src={floorplanImg}
                   alt="Office floorplan"
@@ -518,78 +599,90 @@ function App() {
                 />
 
                 {RESOURCES.map((res) => {
-                  const key = makeBookingKey(res.id, selectedDate);
-                  const intervals = bookings[key] || [];
-                  const isSelected = res.id === selectedResourceId;
+  const key = makeBookingKey(res.id, selectedDate);
+  const userIntervals = bookings[key] || [];
+  const deptIntervalsForRes = getDeptBookingsForResource(res.id);
+  const intervals = [...userIntervals, ...deptIntervalsForRes];
 
-                  let isBookedForInterval = false;
+  const isSelected = res.id === selectedResourceId;
 
-                  if (hasValidInterval) {
-                    const s = parseTimeToMinutes(startTime);
-                    const e = parseTimeToMinutes(endTime);
+  let isBookedForInterval = false;
 
-                    isBookedForInterval = intervals.some((b) =>
-                      intervalsOverlap(
-                        s,
-                        e,
-                        parseTimeToMinutes(b.start),
-                        parseTimeToMinutes(b.end)
-                      )
-                    );
-                  }
+  if (hasValidInterval) {
+    const s = parseTimeToMinutes(startTime);
+    const e = parseTimeToMinutes(endTime);
 
-                  // if a valid interval is selected -> green/red based on that
-                  // otherwise -> green/red based on "any booking that day"
-                  const isBooked = hasValidInterval
-                    ? isBookedForInterval
-                    : intervals.length > 0;
+    isBookedForInterval = intervals.some((b) =>
+      intervalsOverlap(
+        s,
+        e,
+        parseTimeToMinutes(b.start),
+        parseTimeToMinutes(b.end)
+      )
+    );
+  }
 
-                  return (
-                    <button
-                      key={res.id}
-                      className={[
-                        "resource-pin",
-                        `resource-${res.type}`,
-                        isBooked ? "resource-booked" : "resource-free",
-                        isSelected ? "resource-selected" : "",
-                      ].join(" ")}
-                      style={{
-                        left: `${res.x}%`,
-                        top: `${res.y}%`,
-                      }}
-                      onClick={() => setSelectedResourceId(res.id)}
-                      title={`${res.label} • ${
-                        hasValidInterval
-                          ? isBooked
-                            ? "Not available in this interval"
-                            : "Available in this interval"
-                          : isBooked
-                          ? "Has bookings this day"
-                          : "No bookings this day"
-                      }`}
-                    >
-                      <span className="resource-pin-label">
-                        {res.type === "desk"
-                          ? "D"
-                          : res.type === "room"
-                          ? "R"
-                          : res.type === "admin"
-                          ? "A"
-                          : res.type === "bub"
-                          ? "B"
-                          : res.type === "desk"
-                          ? "D"
-                          : res.type === "wellness"
-                          ? "W"
-                          : res.type === "bigroom"
-                          ? "B"
-                          : res.type === "beerpong"
-                          ? "BZ"
-                          : "."}
-                      </span>
-                    </button>
-                  );
-                })}
+  const isBooked = hasValidInterval
+    ? isBookedForInterval
+    : intervals.length > 0;
+
+  const isDeptHighlighted =
+    selectedDepartment && departmentDeskIds.includes(res.id);
+
+  // request-type resources: room, wellness, admin, bub
+  const isReqTypeRes = ["room", "wellness", "admin", "bub"].includes(
+    res.type
+  );
+
+  return (
+    <button
+      key={res.id}
+      className={[
+        "resource-pin",
+        `resource-${res.type}`,
+        isBooked ? "resource-booked" : "resource-free",
+        isBooked && isReqTypeRes ? "resource-booked-request" : "",
+        isSelected ? "resource-selected" : "",
+        isDeptHighlighted ? "resource-dept-highlight" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      style={{
+        left: `${res.x}%`,
+        top: `${res.y}%`,
+      }}
+      onClick={() => setSelectedResourceId(res.id)}
+      title={`${res.label} • ${
+        hasValidInterval
+          ? isBooked
+            ? "Not available in this interval"
+            : "Available in this interval"
+          : isBooked
+          ? "Has bookings this day"
+          : "No bookings this day"
+      }`}
+    >
+      <span className="resource-pin-label">
+        {res.type === "desk"
+          ? "D"
+          : res.type === "room"
+          ? "R"
+          : res.type === "admin"
+          ? "A"
+          : res.type === "bub"
+          ? "B"
+          : res.type === "wellness"
+          ? "W"
+          : res.type === "bigroom"
+          ? "B"
+          : res.type === "beerpong"
+          ? "BZ"
+          : "."}
+      </span>
+    </button>
+  );
+})}
+
               </div>
             </div>
           </div>
@@ -628,36 +721,80 @@ function App() {
 
                 {/* Time interval inputs */}
                 <div className="booking-section booking-times">
-  <div className="booking-times-header">
-    <span className="booking-label">Time interval</span>
-  </div>
+                  <div className="booking-times-header">
+                    <span className="booking-label">Time interval</span>
+                  </div>
 
-  <div className="time-row">
-    <div className="time-field">
-      <label htmlFor="startTime">Start</label>
-      <input
-        id="startTime"
-        type="time"
-        value={startTime}
-        onChange={(e) => setStartTime(e.target.value)}
-      />
-    </div>
+                  <div className="time-row">
+                    <div className="time-field">
+                      <label htmlFor="startTime">Start</label>
+                      <input
+                        id="startTime"
+                        type="time"
+                        value={startTime}
+                        onChange={(e) => setStartTime(e.target.value)}
+                      />
+                    </div>
 
-    <span className="time-separator">to</span>
+                    <span className="time-separator">to</span>
 
-    <div className="time-field">
-      <label htmlFor="endTime">End</label>
-      <input
-        id="endTime"
-        type="time"
-        value={endTime}
-        onChange={(e) => setEndTime(e.target.value)}
-      />
-    </div>
-  </div>
+                    <div className="time-field">
+                      <label htmlFor="endTime">End</label>
+                      <input
+                        id="endTime"
+                        type="time"
+                        value={endTime}
+                        onChange={(e) => setEndTime(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
 
-  
-</div>
+                {/* Department view (after time interval) */}
+                <div className="booking-section">
+                  <label className="booking-label" htmlFor="department">
+                    Department view
+                  </label>
+                  <select
+                    id="department"
+                    className="booking-select"
+                    value={selectedDepartment}
+                    onChange={(e) => setSelectedDepartment(e.target.value)}
+                  >
+                    <option value="">All departments</option>
+                    {DEPARTMENTS.map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
+                  </select>
+
+                  {selectedDepartment && (
+                    <>
+                      <p className="booking-subtitle">
+                        Showing bookings for {selectedDepartment}
+                      </p>
+                      <ul className="dept-booking-list">
+                        {departmentBookings.map((b, idx) => {
+                          const desk = RESOURCES.find(
+                            (r) => r.id === b.deskId
+                          );
+                          return (
+                            <li key={idx}>
+                              <span className="dept-employee">{b.employee}</span>
+                              <span className="dept-desk">
+                                {desk ? desk.label : b.deskId}
+                              </span>
+                              <span className="dept-time">
+                                {b.start} – {b.end}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </>
+                  )}
+                </div>
 
                 <div className="booking-section">
                   <p className="booking-label">Status</p>
@@ -677,34 +814,49 @@ function App() {
                   </p>
 
                   {bookingsForSelected.length > 0 && (
-                    <ul className="booking-list">
-                      {bookingsForSelected.map((b, idx) => (
-                        <li key={idx}>
-                          {b.start} – {b.end} ({b.user})
-                        </li>
-                      ))}
-                    </ul>
+                      <ul className="booking-list">
+                        {bookingsForSelected.map((b, idx) => {
+                          // for room / wellness / admin / bub and only for your own bookings
+                          const isRequestForYou = isRequestType && b.user === "You";
+
+                          return (
+                            <li key={idx}>
+                              {b.start}-{b.end} {isRequestForYou ? "Request " : ""}
+                              ({b.user}
+                              {b.department ? `, ${b.department}` : ""})
+                            </li>
+                          );
+                        })}
+                      </ul>
                   )}
+
                 </div>
 
                 <div className="booking-actions">
-                      <button
-                        className={`primary-btn ${!canBook ? "primary-btn--blocked" : ""}`}
-                        onClick={handleBook}
-                        disabled={!canBook}
-                      >
-                        Book interval
-                      </button>
-                      <button className="secondary-btn" onClick={handleCancel}>
-                        Cancel this interval
-                      </button>
-                    </div>
+                    <button
+                      className={[
+                        "primary-btn",
+                        isRequestType ? "primary-btn--request" : "",
+                        !canBook ? "primary-btn--blocked" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      onClick={handleBook}
+                      disabled={!canBook}
+                    >
+                      {primaryButtonLabel}
+                    </button>
+                    <button className="secondary-btn" onClick={handleCancel}>
+                      Cancel this interval
+                    </button>
+                  </div>
 
 
                 <p className="hint">
                   Pick a date and time interval (e.g. 18:00–20:00). Pins turn
                   green if they’re free for that interval and red if they’re
-                  booked.
+                  booked by you or department employees. Selecting a department
+                  highlights that team’s desks.
                 </p>
               </>
             ) : (

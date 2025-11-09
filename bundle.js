@@ -23826,8 +23826,8 @@
     //bubbles
     { id: "Bub-1", type: "bub", label: "Bubble Room 1", x: 27.5, y: 14 },
     { id: "Bub-2", type: "bub", label: "Bubble Room 2", x: 97.5, y: 22.5 },
-    { id: "Bub-3", type: "bub", label: "Bubble Room 1", x: 27.5, y: 85.5 },
-    { id: "Bub-4", type: "bub", label: "Bubble Room 2", x: 97.5, y: 92 },
+    { id: "Bub-3", type: "bub", label: "Bubble Room 3", x: 27.5, y: 85.5 },
+    { id: "Bub-4", type: "bub", label: "Bubble Room 4", x: 97.5, y: 92 },
     //wellness rooms
     { id: "Well-1", type: "wellness", label: "Wellness Room 1", x: 162, y: 40 },
     { id: "Well-2", type: "wellness", label: "Wellness Room 2", x: 32, y: 50 },
@@ -23837,6 +23837,39 @@
     //beerpong
     { id: "Beerpong-1", type: "beerpong", label: "Beer Zone", x: 16.5, y: 48 }
   ];
+  var DEPARTMENT_BOOKINGS = {
+    Finance: [
+      { employee: "Ana F.", deskId: "desk-t-01", start: "09:00", end: "11:00" },
+      { employee: "Mihai F.", deskId: "desk-t-22", start: "11:00", end: "13:00" },
+      { employee: "Ioana F.", deskId: "desk-t-12", start: "14:00", end: "17:00" }
+    ],
+    Commercial: [
+      { employee: "Andrei C.", deskId: "desk-t-04", start: "09:00", end: "12:00" },
+      { employee: "Bianca C.", deskId: "desk-t-27", start: "12:00", end: "15:00" },
+      { employee: "Radu C.", deskId: "desk-t-46", start: "15:00", end: "18:00" }
+    ],
+    HR: [
+      { employee: "Alexandra H.", deskId: "desk-b-12", start: "08:30", end: "11:30" },
+      { employee: "George H.", deskId: "desk-b-58", start: "11:30", end: "14:30" },
+      { employee: "Laura H.", deskId: "desk-b-26", start: "14:30", end: "17:30" }
+    ],
+    IT: [
+      { employee: "Vlad I.", deskId: "desk-t-10", start: "09:00", end: "13:00" },
+      { employee: "Daria I.", deskId: "desk-t-11", start: "10:00", end: "16:00" },
+      { employee: "Tudor I.", deskId: "desk-t-12", start: "13:00", end: "18:00" }
+    ],
+    "Marketing&Strategy": [
+      { employee: "Maria M.", deskId: "desk-t-13", start: "09:30", end: "12:30" },
+      { employee: "Oana M.", deskId: "desk-t-14", start: "12:30", end: "15:30" },
+      { employee: "Paul M.", deskId: "desk-t-15", start: "15:30", end: "18:00" }
+    ],
+    "Sales and Commercial": [
+      { employee: "Iris S.", deskId: "desk-t-16", start: "08:00", end: "11:00" },
+      { employee: "Cristi S.", deskId: "desk-t-17", start: "11:00", end: "14:00" },
+      { employee: "Teodora S.", deskId: "desk-t-18", start: "14:00", end: "17:00" }
+    ]
+  };
+  var DEPARTMENTS = Object.keys(DEPARTMENT_BOOKINGS);
   function makeBookingKey(resourceId, dateStr) {
     return `${resourceId}_${dateStr}`;
   }
@@ -23847,9 +23880,27 @@
   function intervalsOverlap(s1, e1, s2, e2) {
     return s1 < e2 && s2 < e1;
   }
+  function getDeptBookingsForResource(resourceId) {
+    const result = [];
+    for (const [dept, items] of Object.entries(DEPARTMENT_BOOKINGS)) {
+      for (const b of items) {
+        if (b.deskId === resourceId) {
+          result.push({
+            resourceId,
+            start: b.start,
+            end: b.end,
+            user: b.employee,
+            department: dept,
+            isDept: true
+          });
+        }
+      }
+    }
+    return result;
+  }
   function App() {
     const [selectedResourceId, setSelectedResourceId] = (0, import_react.useState)(
-      RESOURCES[0]?.id
+      RESOURCES[0]?.id || null
     );
     const [selectedDate, setSelectedDate] = (0, import_react.useState)(
       (/* @__PURE__ */ new Date()).toISOString().slice(0, 10)
@@ -23858,29 +23909,38 @@
     const [startTime, setStartTime] = (0, import_react.useState)("18:00");
     const [endTime, setEndTime] = (0, import_react.useState)("20:00");
     const [zoom, setZoom] = (0, import_react.useState)(1);
+    const [selectedDepartment, setSelectedDepartment] = (0, import_react.useState)("");
     const [bookings, setBookings] = (0, import_react.useState)({});
     const selectedResource = (0, import_react.useMemo)(
       () => RESOURCES.find((r) => r.id === selectedResourceId),
       [selectedResourceId]
     );
+    const isRequestType = selectedResource && ["room", "wellness", "admin", "bub"].includes(selectedResource.type);
+    const primaryButtonLabel = isRequestType ? "Request" : "Book interval";
     const bookingKeyForSelected = (0, import_react.useMemo)(() => {
       if (!selectedResource) return null;
       return makeBookingKey(selectedResource.id, selectedDate);
     }, [selectedResource, selectedDate]);
-    const bookingsForSelected = (0, import_react.useMemo)(() => {
+    const userBookingsForSelected = (0, import_react.useMemo)(() => {
       if (!bookingKeyForSelected) return [];
       return bookings[bookingKeyForSelected] || [];
     }, [bookings, bookingKeyForSelected]);
+    const deptBookingsForSelected = (0, import_react.useMemo)(() => {
+      if (!selectedResource) return [];
+      return getDeptBookingsForResource(selectedResource.id);
+    }, [selectedResource]);
+    const bookingsForSelected = (0, import_react.useMemo)(
+      () => [...userBookingsForSelected, ...deptBookingsForSelected],
+      [userBookingsForSelected, deptBookingsForSelected]
+    );
     const hasValidInterval = startTime && endTime && parseTimeToMinutes(endTime) > parseTimeToMinutes(startTime);
     const isSelectedBooked = (0, import_react.useMemo)(() => {
-      if (!bookingKeyForSelected) return false;
-      const current = bookingsForSelected;
       if (!hasValidInterval) {
-        return current.length > 0;
+        return bookingsForSelected.length > 0;
       }
       const s = parseTimeToMinutes(startTime);
       const e = parseTimeToMinutes(endTime);
-      return current.some(
+      return bookingsForSelected.some(
         (b) => intervalsOverlap(
           s,
           e,
@@ -23888,7 +23948,7 @@
           parseTimeToMinutes(b.end)
         )
       );
-    }, [bookingKeyForSelected, bookingsForSelected, hasValidInterval, startTime, endTime]);
+    }, [bookingsForSelected, hasValidInterval, startTime, endTime]);
     const canBook = !!selectedResource && !!selectedDate && hasValidInterval && !isSelectedBooked;
     const handleBook = () => {
       if (!selectedResource || !selectedDate) return;
@@ -23903,8 +23963,10 @@
         return;
       }
       const key = makeBookingKey(selectedResource.id, selectedDate);
-      const existing = bookings[key] || [];
-      const hasOverlap = existing.some(
+      const existingUserBookings = bookings[key] || [];
+      const deptBookingsForRes = getDeptBookingsForResource(selectedResource.id);
+      const allExisting = [...existingUserBookings, ...deptBookingsForRes];
+      const hasOverlap = allExisting.some(
         (b) => intervalsOverlap(
           startMinutes,
           endMinutes,
@@ -23959,51 +24021,75 @@
         return Number(next.toFixed(2));
       });
     };
-    return /* @__PURE__ */ import_react.default.createElement("div", { className: "app" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "map-wrapper" }, /* @__PURE__ */ import_react.default.createElement("h1", { className: "map-title" }, "Office Planner"), /* @__PURE__ */ import_react.default.createElement("div", { className: "layout" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "map-card" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "map-toolbar" }, /* @__PURE__ */ import_react.default.createElement("span", { className: "toolbar-label" }, "Zoom"), /* @__PURE__ */ import_react.default.createElement("button", { onClick: () => handleZoomChange(-0.1) }, "-"), /* @__PURE__ */ import_react.default.createElement("span", { className: "zoom-label" }, Math.round(zoom * 100), "%"), /* @__PURE__ */ import_react.default.createElement("button", { onClick: () => handleZoomChange(0.1) }, "+")), /* @__PURE__ */ import_react.default.createElement("div", { className: "map-viewport" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "map-inner", style: { transform: `scale(${zoom})` } }, /* @__PURE__ */ import_react.default.createElement(
-      "img",
+    const departmentBookings = (0, import_react.useMemo)(() => {
+      if (!selectedDepartment) return [];
+      return DEPARTMENT_BOOKINGS[selectedDepartment] || [];
+    }, [selectedDepartment]);
+    const departmentDeskIds = (0, import_react.useMemo)(
+      () => departmentBookings.map((b) => b.deskId),
+      [departmentBookings]
+    );
+    return /* @__PURE__ */ import_react.default.createElement("div", { className: "app" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "map-wrapper" }, /* @__PURE__ */ import_react.default.createElement("h1", { className: "map-title" }, "Office Planner"), /* @__PURE__ */ import_react.default.createElement("div", { className: "layout" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "map-card" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "map-toolbar" }, /* @__PURE__ */ import_react.default.createElement("span", { className: "toolbar-label" }, "Zoom"), /* @__PURE__ */ import_react.default.createElement("button", { onClick: () => handleZoomChange(-0.1) }, "-"), /* @__PURE__ */ import_react.default.createElement("span", { className: "zoom-label" }, Math.round(zoom * 100), "%"), /* @__PURE__ */ import_react.default.createElement("button", { onClick: () => handleZoomChange(0.1) }, "+")), /* @__PURE__ */ import_react.default.createElement("div", { className: "map-viewport" }, /* @__PURE__ */ import_react.default.createElement(
+      "div",
       {
-        src: floorplan_default,
-        alt: "Office floorplan",
-        className: "map-image"
-      }
-    ), RESOURCES.map((res) => {
-      const key = makeBookingKey(res.id, selectedDate);
-      const intervals = bookings[key] || [];
-      const isSelected = res.id === selectedResourceId;
-      let isBookedForInterval = false;
-      if (hasValidInterval) {
-        const s = parseTimeToMinutes(startTime);
-        const e = parseTimeToMinutes(endTime);
-        isBookedForInterval = intervals.some(
-          (b) => intervalsOverlap(
-            s,
-            e,
-            parseTimeToMinutes(b.start),
-            parseTimeToMinutes(b.end)
-          )
-        );
-      }
-      const isBooked = hasValidInterval ? isBookedForInterval : intervals.length > 0;
-      return /* @__PURE__ */ import_react.default.createElement(
-        "button",
+        className: "map-inner" + (selectedDepartment ? " map-inner--dept-filter" : ""),
+        style: { transform: `scale(${zoom})` }
+      },
+      /* @__PURE__ */ import_react.default.createElement(
+        "img",
         {
-          key: res.id,
-          className: [
-            "resource-pin",
-            `resource-${res.type}`,
-            isBooked ? "resource-booked" : "resource-free",
-            isSelected ? "resource-selected" : ""
-          ].join(" "),
-          style: {
-            left: `${res.x}%`,
-            top: `${res.y}%`
+          src: floorplan_default,
+          alt: "Office floorplan",
+          className: "map-image"
+        }
+      ),
+      RESOURCES.map((res) => {
+        const key = makeBookingKey(res.id, selectedDate);
+        const userIntervals = bookings[key] || [];
+        const deptIntervalsForRes = getDeptBookingsForResource(res.id);
+        const intervals = [...userIntervals, ...deptIntervalsForRes];
+        const isSelected = res.id === selectedResourceId;
+        let isBookedForInterval = false;
+        if (hasValidInterval) {
+          const s = parseTimeToMinutes(startTime);
+          const e = parseTimeToMinutes(endTime);
+          isBookedForInterval = intervals.some(
+            (b) => intervalsOverlap(
+              s,
+              e,
+              parseTimeToMinutes(b.start),
+              parseTimeToMinutes(b.end)
+            )
+          );
+        }
+        const isBooked = hasValidInterval ? isBookedForInterval : intervals.length > 0;
+        const isDeptHighlighted = selectedDepartment && departmentDeskIds.includes(res.id);
+        const isReqTypeRes = ["room", "wellness", "admin", "bub"].includes(
+          res.type
+        );
+        return /* @__PURE__ */ import_react.default.createElement(
+          "button",
+          {
+            key: res.id,
+            className: [
+              "resource-pin",
+              `resource-${res.type}`,
+              isBooked ? "resource-booked" : "resource-free",
+              isBooked && isReqTypeRes ? "resource-booked-request" : "",
+              isSelected ? "resource-selected" : "",
+              isDeptHighlighted ? "resource-dept-highlight" : ""
+            ].filter(Boolean).join(" "),
+            style: {
+              left: `${res.x}%`,
+              top: `${res.y}%`
+            },
+            onClick: () => setSelectedResourceId(res.id),
+            title: `${res.label} \u2022 ${hasValidInterval ? isBooked ? "Not available in this interval" : "Available in this interval" : isBooked ? "Has bookings this day" : "No bookings this day"}`
           },
-          onClick: () => setSelectedResourceId(res.id),
-          title: `${res.label} \u2022 ${hasValidInterval ? isBooked ? "Not available in this interval" : "Available in this interval" : isBooked ? "Has bookings this day" : "No bookings this day"}`
-        },
-        /* @__PURE__ */ import_react.default.createElement("span", { className: "resource-pin-label" }, res.type === "desk" ? "D" : res.type === "room" ? "R" : res.type === "admin" ? "A" : res.type === "bub" ? "B" : res.type === "desk" ? "D" : res.type === "wellness" ? "W" : res.type === "bigroom" ? "B" : res.type === "beerpong" ? "BZ" : ".")
-      );
-    })))), /* @__PURE__ */ import_react.default.createElement("aside", { className: "booking-card" }, /* @__PURE__ */ import_react.default.createElement("h2", null, "Booking"), selectedResource ? /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, /* @__PURE__ */ import_react.default.createElement("div", { className: "booking-section" }, /* @__PURE__ */ import_react.default.createElement("p", { className: "booking-label" }, "Selected"), /* @__PURE__ */ import_react.default.createElement("p", { className: "booking-value" }, /* @__PURE__ */ import_react.default.createElement("strong", null, selectedResource.label), " ", /* @__PURE__ */ import_react.default.createElement("span", { className: "badge" }, selectedResource.type === "desk" ? "Desk" : selectedResource.type === "room" ? "Meeting Room" : selectedResource.type))), /* @__PURE__ */ import_react.default.createElement("div", { className: "booking-section" }, /* @__PURE__ */ import_react.default.createElement("label", { className: "booking-label", htmlFor: "date" }, "Date"), /* @__PURE__ */ import_react.default.createElement(
+          /* @__PURE__ */ import_react.default.createElement("span", { className: "resource-pin-label" }, res.type === "desk" ? "D" : res.type === "room" ? "R" : res.type === "admin" ? "A" : res.type === "bub" ? "B" : res.type === "wellness" ? "W" : res.type === "bigroom" ? "B" : res.type === "beerpong" ? "BZ" : ".")
+        );
+      })
+    ))), /* @__PURE__ */ import_react.default.createElement("aside", { className: "booking-card" }, /* @__PURE__ */ import_react.default.createElement("h2", null, "Booking"), selectedResource ? /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, /* @__PURE__ */ import_react.default.createElement("div", { className: "booking-section" }, /* @__PURE__ */ import_react.default.createElement("p", { className: "booking-label" }, "Selected"), /* @__PURE__ */ import_react.default.createElement("p", { className: "booking-value" }, /* @__PURE__ */ import_react.default.createElement("strong", null, selectedResource.label), " ", /* @__PURE__ */ import_react.default.createElement("span", { className: "badge" }, selectedResource.type === "desk" ? "Desk" : selectedResource.type === "room" ? "Meeting Room" : selectedResource.type))), /* @__PURE__ */ import_react.default.createElement("div", { className: "booking-section" }, /* @__PURE__ */ import_react.default.createElement("label", { className: "booking-label", htmlFor: "date" }, "Date"), /* @__PURE__ */ import_react.default.createElement(
       "input",
       {
         id: "date",
@@ -24027,21 +24113,43 @@
         value: endTime,
         onChange: (e) => setEndTime(e.target.value)
       }
-    )))), /* @__PURE__ */ import_react.default.createElement("div", { className: "booking-section" }, /* @__PURE__ */ import_react.default.createElement("p", { className: "booking-label" }, "Status"), /* @__PURE__ */ import_react.default.createElement(
+    )))), /* @__PURE__ */ import_react.default.createElement("div", { className: "booking-section" }, /* @__PURE__ */ import_react.default.createElement("label", { className: "booking-label", htmlFor: "department" }, "Department view"), /* @__PURE__ */ import_react.default.createElement(
+      "select",
+      {
+        id: "department",
+        className: "booking-select",
+        value: selectedDepartment,
+        onChange: (e) => setSelectedDepartment(e.target.value)
+      },
+      /* @__PURE__ */ import_react.default.createElement("option", { value: "" }, "All departments"),
+      DEPARTMENTS.map((dept) => /* @__PURE__ */ import_react.default.createElement("option", { key: dept, value: dept }, dept))
+    ), selectedDepartment && /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, /* @__PURE__ */ import_react.default.createElement("p", { className: "booking-subtitle" }, "Showing bookings for ", selectedDepartment), /* @__PURE__ */ import_react.default.createElement("ul", { className: "dept-booking-list" }, departmentBookings.map((b, idx) => {
+      const desk = RESOURCES.find(
+        (r) => r.id === b.deskId
+      );
+      return /* @__PURE__ */ import_react.default.createElement("li", { key: idx }, /* @__PURE__ */ import_react.default.createElement("span", { className: "dept-employee" }, b.employee), /* @__PURE__ */ import_react.default.createElement("span", { className: "dept-desk" }, desk ? desk.label : b.deskId), /* @__PURE__ */ import_react.default.createElement("span", { className: "dept-time" }, b.start, " \u2013 ", b.end));
+    })))), /* @__PURE__ */ import_react.default.createElement("div", { className: "booking-section" }, /* @__PURE__ */ import_react.default.createElement("p", { className: "booking-label" }, "Status"), /* @__PURE__ */ import_react.default.createElement(
       "p",
       {
         className: "booking-status " + (isSelectedBooked ? "status-booked" : "status-free")
       },
       hasValidInterval ? isSelectedBooked ? "Booked in this time interval" : "Available in this time interval" : isSelectedBooked ? "Has bookings for this date" : "No bookings for this date"
-    ), bookingsForSelected.length > 0 && /* @__PURE__ */ import_react.default.createElement("ul", { className: "booking-list" }, bookingsForSelected.map((b, idx) => /* @__PURE__ */ import_react.default.createElement("li", { key: idx }, b.start, " \u2013 ", b.end, " (", b.user, ")")))), /* @__PURE__ */ import_react.default.createElement("div", { className: "booking-actions" }, /* @__PURE__ */ import_react.default.createElement(
+    ), bookingsForSelected.length > 0 && /* @__PURE__ */ import_react.default.createElement("ul", { className: "booking-list" }, bookingsForSelected.map((b, idx) => {
+      const isRequestForYou = isRequestType && b.user === "You";
+      return /* @__PURE__ */ import_react.default.createElement("li", { key: idx }, b.start, "-", b.end, " ", isRequestForYou ? "Request " : "", "(", b.user, b.department ? `, ${b.department}` : "", ")");
+    }))), /* @__PURE__ */ import_react.default.createElement("div", { className: "booking-actions" }, /* @__PURE__ */ import_react.default.createElement(
       "button",
       {
-        className: `primary-btn ${!canBook ? "primary-btn--blocked" : ""}`,
+        className: [
+          "primary-btn",
+          isRequestType ? "primary-btn--request" : "",
+          !canBook ? "primary-btn--blocked" : ""
+        ].filter(Boolean).join(" "),
         onClick: handleBook,
         disabled: !canBook
       },
-      "Book interval"
-    ), /* @__PURE__ */ import_react.default.createElement("button", { className: "secondary-btn", onClick: handleCancel }, "Cancel this interval")), /* @__PURE__ */ import_react.default.createElement("p", { className: "hint" }, "Pick a date and time interval (e.g. 18:00\u201320:00). Pins turn green if they\u2019re free for that interval and red if they\u2019re booked.")) : /* @__PURE__ */ import_react.default.createElement("p", null, "Select a desk or room on the map.")))));
+      primaryButtonLabel
+    ), /* @__PURE__ */ import_react.default.createElement("button", { className: "secondary-btn", onClick: handleCancel }, "Cancel this interval")), /* @__PURE__ */ import_react.default.createElement("p", { className: "hint" }, "Pick a date and time interval (e.g. 18:00\u201320:00). Pins turn green if they\u2019re free for that interval and red if they\u2019re booked by you or department employees. Selecting a department highlights that team\u2019s desks.")) : /* @__PURE__ */ import_react.default.createElement("p", null, "Select a desk or room on the map.")))));
   }
   var App_default = App;
 
