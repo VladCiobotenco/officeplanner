@@ -1096,7 +1096,7 @@
             var dispatcher = resolveDispatcher();
             return dispatcher.useRef(initialValue);
           }
-          function useEffect(create, deps) {
+          function useEffect2(create, deps) {
             var dispatcher = resolveDispatcher();
             return dispatcher.useEffect(create, deps);
           }
@@ -1879,7 +1879,7 @@
           exports.useContext = useContext;
           exports.useDebugValue = useDebugValue;
           exports.useDeferredValue = useDeferredValue;
-          exports.useEffect = useEffect;
+          exports.useEffect = useEffect2;
           exports.useId = useId;
           exports.useImperativeHandle = useImperativeHandle;
           exports.useInsertionEffect = useInsertionEffect;
@@ -23840,18 +23840,18 @@
   var DEPARTMENT_BOOKINGS = {
     Finance: [
       { employee: "Ana F.", deskId: "desk-t-01", start: "09:00", end: "11:00" },
-      { employee: "Mihai F.", deskId: "desk-t-22", start: "11:00", end: "13:00" },
-      { employee: "Ioana F.", deskId: "desk-t-12", start: "14:00", end: "17:00" }
+      { employee: "Mihai F.", deskId: "desk-t-02", start: "11:00", end: "13:00" },
+      { employee: "Ioana F.", deskId: "desk-t-03", start: "14:00", end: "17:00" }
     ],
     Commercial: [
       { employee: "Andrei C.", deskId: "desk-t-04", start: "09:00", end: "12:00" },
-      { employee: "Bianca C.", deskId: "desk-t-27", start: "12:00", end: "15:00" },
-      { employee: "Radu C.", deskId: "desk-t-46", start: "15:00", end: "18:00" }
+      { employee: "Bianca C.", deskId: "desk-t-05", start: "12:00", end: "15:00" },
+      { employee: "Radu C.", deskId: "desk-t-06", start: "15:00", end: "18:00" }
     ],
     HR: [
-      { employee: "Alexandra H.", deskId: "desk-b-12", start: "08:30", end: "11:30" },
-      { employee: "George H.", deskId: "desk-b-58", start: "11:30", end: "14:30" },
-      { employee: "Laura H.", deskId: "desk-b-26", start: "14:30", end: "17:30" }
+      { employee: "Alexandra H.", deskId: "desk-t-07", start: "08:30", end: "11:30" },
+      { employee: "George H.", deskId: "desk-t-08", start: "11:30", end: "14:30" },
+      { employee: "Laura H.", deskId: "desk-t-09", start: "14:30", end: "17:30" }
     ],
     IT: [
       { employee: "Vlad I.", deskId: "desk-t-10", start: "09:00", end: "13:00" },
@@ -23870,6 +23870,8 @@
     ]
   };
   var DEPARTMENTS = Object.keys(DEPARTMENT_BOOKINGS);
+  var USERS_KEY = "officePlannerUsers";
+  var CURRENT_USER_KEY = "officePlannerCurrentUser";
   function makeBookingKey(resourceId, dateStr) {
     return `${resourceId}_${dateStr}`;
   }
@@ -23899,12 +23901,93 @@
     return result;
   }
   function App() {
+    const [currentUser, setCurrentUser] = (0, import_react.useState)(null);
+    const [authMode, setAuthMode] = (0, import_react.useState)("login");
+    const [authEmail, setAuthEmail] = (0, import_react.useState)("");
+    const [authPassword, setAuthPassword] = (0, import_react.useState)("");
+    const [authName, setAuthName] = (0, import_react.useState)("");
+    const [authRole, setAuthRole] = (0, import_react.useState)("employee");
+    (0, import_react.useEffect)(() => {
+      try {
+        const saved = localStorage.getItem(CURRENT_USER_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.email) {
+            setCurrentUser(parsed);
+          }
+        }
+      } catch (e) {
+        console.error("Error loading current user", e);
+      }
+    }, []);
+    const currentUserLabel = currentUser?.name || currentUser?.email || "You";
+    const getStoredUsers = () => {
+      try {
+        const raw = localStorage.getItem(USERS_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    };
+    const saveUsers = (users) => {
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    };
+    const handleSignupSubmit = (e) => {
+      e.preventDefault();
+      if (!authName.trim() || !authEmail.trim() || !authPassword.trim()) {
+        alert("Please fill in all fields.");
+        return;
+      }
+      const users = getStoredUsers();
+      const exists = users.some(
+        (u) => u.email.toLowerCase() === authEmail.trim().toLowerCase()
+      );
+      if (exists) {
+        alert("An account with this email already exists.");
+        return;
+      }
+      const newUser = {
+        name: authName.trim(),
+        email: authEmail.trim(),
+        password: authPassword,
+        // demo only
+        role: authRole === "admin" ? "admin" : "employee"
+      };
+      const updatedUsers = [...users, newUser];
+      saveUsers(updatedUsers);
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(newUser));
+      setCurrentUser(newUser);
+      setAuthPassword("");
+    };
+    const handleLoginSubmit = (e) => {
+      e.preventDefault();
+      if (!authEmail.trim() || !authPassword.trim()) {
+        alert("Please enter email and password.");
+        return;
+      }
+      const users = getStoredUsers();
+      const found = users.find(
+        (u) => u.email.toLowerCase() === authEmail.trim().toLowerCase() && u.password === authPassword
+      );
+      if (!found) {
+        alert("Invalid email or password.");
+        return;
+      }
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(found));
+      setCurrentUser(found);
+      setAuthPassword("");
+    };
+    const handleLogout = () => {
+      setCurrentUser(null);
+      localStorage.removeItem(CURRENT_USER_KEY);
+    };
     const [selectedResourceId, setSelectedResourceId] = (0, import_react.useState)(
       RESOURCES[0]?.id || null
     );
     const [selectedDate, setSelectedDate] = (0, import_react.useState)(
       (/* @__PURE__ */ new Date()).toISOString().slice(0, 10)
-      // YYYY-MM-DD
     );
     const [startTime, setStartTime] = (0, import_react.useState)("18:00");
     const [endTime, setEndTime] = (0, import_react.useState)("20:00");
@@ -23915,7 +23998,11 @@
       () => RESOURCES.find((r) => r.id === selectedResourceId),
       [selectedResourceId]
     );
-    const isRequestType = selectedResource && ["room", "wellness", "admin", "bub"].includes(selectedResource.type);
+    const isAdminUser = currentUser?.role === "admin";
+    const baseRequestType = selectedResource && ["room", "wellness", "admin", "bub"].includes(selectedResource.type);
+    const isRequestType = baseRequestType && !isAdminUser;
+    const isManagementResource = selectedResource && (selectedResource.type === "admin" || selectedResource.type === "management");
+    const isBookingBlockedByRole = !isAdminUser && isManagementResource;
     const primaryButtonLabel = isRequestType ? "Request" : "Book interval";
     const bookingKeyForSelected = (0, import_react.useMemo)(() => {
       if (!selectedResource) return null;
@@ -23949,8 +24036,16 @@
         )
       );
     }, [bookingsForSelected, hasValidInterval, startTime, endTime]);
-    const canBook = !!selectedResource && !!selectedDate && hasValidInterval && !isSelectedBooked;
+    const canBook = !!selectedResource && !!selectedDate && hasValidInterval && !isSelectedBooked && !isBookingBlockedByRole;
     const handleBook = () => {
+      if (!currentUser) {
+        alert("Please log in to book.");
+        return;
+      }
+      if (isBookingBlockedByRole) {
+        alert("You don't have permission to book or request management resources.");
+        return;
+      }
       if (!selectedResource || !selectedDate) return;
       if (!startTime || !endTime) {
         alert("Please choose start and end time.");
@@ -23978,26 +24073,35 @@
         alert("This resource is already booked in that time interval.");
         return;
       }
-      const userName = "You";
+      const userName = currentUserLabel;
+      const isReq = isRequestType;
+      const id = Date.now().toString() + Math.random().toString(16).slice(2);
       setBookings((prev) => ({
         ...prev,
         [key]: [
           ...prev[key] || [],
           {
+            id,
             resourceId: selectedResource.id,
             date: selectedDate,
             start: startTime,
             end: endTime,
-            user: userName
+            user: userName,
+            isRequest: isReq,
+            status: isReq ? "pending" : "confirmed"
           }
         ]
       }));
     };
     const handleCancel = () => {
+      if (!currentUser) {
+        alert("Please log in to cancel your bookings.");
+        return;
+      }
       if (!selectedResource || !selectedDate) return;
       const key = makeBookingKey(selectedResource.id, selectedDate);
       const existing = bookings[key] || [];
-      const userName = "You";
+      const userName = currentUserLabel;
       const filtered = existing.filter(
         (b) => !(b.start === startTime && b.end === endTime && b.user === userName)
       );
@@ -24029,7 +24133,124 @@
       () => departmentBookings.map((b) => b.deskId),
       [departmentBookings]
     );
-    return /* @__PURE__ */ import_react.default.createElement("div", { className: "app" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "map-wrapper" }, /* @__PURE__ */ import_react.default.createElement("h1", { className: "map-title" }, "Office Planner"), /* @__PURE__ */ import_react.default.createElement("div", { className: "layout" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "map-card" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "map-toolbar" }, /* @__PURE__ */ import_react.default.createElement("span", { className: "toolbar-label" }, "Zoom"), /* @__PURE__ */ import_react.default.createElement("button", { onClick: () => handleZoomChange(-0.1) }, "-"), /* @__PURE__ */ import_react.default.createElement("span", { className: "zoom-label" }, Math.round(zoom * 100), "%"), /* @__PURE__ */ import_react.default.createElement("button", { onClick: () => handleZoomChange(0.1) }, "+")), /* @__PURE__ */ import_react.default.createElement("div", { className: "map-viewport" }, /* @__PURE__ */ import_react.default.createElement(
+    const pendingRequests = (0, import_react.useMemo)(() => {
+      const list = [];
+      for (const arr of Object.values(bookings)) {
+        for (const b of arr) {
+          if (b.isRequest && b.status === "pending") {
+            list.push(b);
+          }
+        }
+      }
+      list.sort((a, b) => {
+        if (a.date < b.date) return -1;
+        if (a.date > b.date) return 1;
+        if (a.start < b.start) return -1;
+        if (a.start > b.start) return 1;
+        return 0;
+      });
+      return list;
+    }, [bookings]);
+    const handleApproveRequest = (req) => {
+      const key = makeBookingKey(req.resourceId, req.date);
+      setBookings((prev) => {
+        const arr = prev[key] || [];
+        const newArr = arr.map(
+          (b) => b.id === req.id ? { ...b, status: "approved" } : b
+        );
+        return { ...prev, [key]: newArr };
+      });
+    };
+    const handleDenyRequest = (req) => {
+      const key = makeBookingKey(req.resourceId, req.date);
+      setBookings((prev) => {
+        const arr = prev[key] || [];
+        const newArr = arr.filter((b) => b.id !== req.id);
+        const copy = { ...prev };
+        if (newArr.length > 0) {
+          copy[key] = newArr;
+        } else {
+          delete copy[key];
+        }
+        return copy;
+      });
+    };
+    if (!currentUser) {
+      return /* @__PURE__ */ import_react.default.createElement("div", { className: "app" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "map-wrapper" }, /* @__PURE__ */ import_react.default.createElement("h1", { className: "map-title" }, "Office Planner"), /* @__PURE__ */ import_react.default.createElement("div", { className: "auth-card" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "auth-toggle" }, /* @__PURE__ */ import_react.default.createElement(
+        "button",
+        {
+          type: "button",
+          className: "auth-toggle-btn " + (authMode === "login" ? "auth-toggle-btn--active" : ""),
+          onClick: () => setAuthMode("login")
+        },
+        "Log in"
+      ), /* @__PURE__ */ import_react.default.createElement(
+        "button",
+        {
+          type: "button",
+          className: "auth-toggle-btn " + (authMode === "signup" ? "auth-toggle-btn--active" : ""),
+          onClick: () => setAuthMode("signup")
+        },
+        "Create account"
+      )), /* @__PURE__ */ import_react.default.createElement(
+        "form",
+        {
+          className: "auth-form",
+          onSubmit: authMode === "login" ? handleLoginSubmit : handleSignupSubmit
+        },
+        authMode === "signup" && /* @__PURE__ */ import_react.default.createElement("div", { className: "auth-field" }, /* @__PURE__ */ import_react.default.createElement("label", { htmlFor: "auth-name" }, "Name"), /* @__PURE__ */ import_react.default.createElement(
+          "input",
+          {
+            id: "auth-name",
+            type: "text",
+            value: authName,
+            onChange: (e) => setAuthName(e.target.value),
+            placeholder: "Your name"
+          }
+        )),
+        /* @__PURE__ */ import_react.default.createElement("div", { className: "auth-field" }, /* @__PURE__ */ import_react.default.createElement("label", { htmlFor: "auth-email" }, "Email"), /* @__PURE__ */ import_react.default.createElement(
+          "input",
+          {
+            id: "auth-email",
+            type: "email",
+            value: authEmail,
+            onChange: (e) => setAuthEmail(e.target.value),
+            placeholder: "you@company.com"
+          }
+        )),
+        /* @__PURE__ */ import_react.default.createElement("div", { className: "auth-field" }, /* @__PURE__ */ import_react.default.createElement("label", { htmlFor: "auth-password" }, "Password"), /* @__PURE__ */ import_react.default.createElement(
+          "input",
+          {
+            id: "auth-password",
+            type: "password",
+            value: authPassword,
+            onChange: (e) => setAuthPassword(e.target.value),
+            placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
+          }
+        )),
+        authMode === "signup" && /* @__PURE__ */ import_react.default.createElement("div", { className: "auth-field auth-role-field" }, /* @__PURE__ */ import_react.default.createElement("span", { className: "auth-role-label" }, "Role"), /* @__PURE__ */ import_react.default.createElement("label", { className: "auth-role-option" }, /* @__PURE__ */ import_react.default.createElement(
+          "input",
+          {
+            type: "radio",
+            name: "role",
+            value: "employee",
+            checked: authRole === "employee",
+            onChange: () => setAuthRole("employee")
+          }
+        ), /* @__PURE__ */ import_react.default.createElement("span", null, "Employee")), /* @__PURE__ */ import_react.default.createElement("label", { className: "auth-role-option" }, /* @__PURE__ */ import_react.default.createElement(
+          "input",
+          {
+            type: "radio",
+            name: "role",
+            value: "admin",
+            checked: authRole === "admin",
+            onChange: () => setAuthRole("admin")
+          }
+        ), /* @__PURE__ */ import_react.default.createElement("span", null, "Admin"))),
+        /* @__PURE__ */ import_react.default.createElement("button", { type: "submit", className: "auth-submit" }, authMode === "login" ? "Enter office" : "Create account")
+      ))));
+    }
+    return /* @__PURE__ */ import_react.default.createElement("div", { className: "app" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "map-wrapper" }, /* @__PURE__ */ import_react.default.createElement("h1", { className: "map-title" }, "Office Planner"), /* @__PURE__ */ import_react.default.createElement("div", { className: "user-bar" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "user-bar-info" }, /* @__PURE__ */ import_react.default.createElement("span", { className: "user-bar-name" }, currentUser.name || currentUser.email), /* @__PURE__ */ import_react.default.createElement("span", { className: "user-bar-role" }, currentUser.role === "admin" ? "Admin" : "Employee")), /* @__PURE__ */ import_react.default.createElement("button", { className: "user-bar-logout", onClick: handleLogout }, "Log out")), /* @__PURE__ */ import_react.default.createElement("div", { className: "layout" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "map-card" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "map-toolbar" }, /* @__PURE__ */ import_react.default.createElement("span", { className: "toolbar-label" }, "Zoom"), /* @__PURE__ */ import_react.default.createElement("button", { onClick: () => handleZoomChange(-0.1) }, "-"), /* @__PURE__ */ import_react.default.createElement("span", { className: "zoom-label" }, Math.round(zoom * 100), "%"), /* @__PURE__ */ import_react.default.createElement("button", { onClick: () => handleZoomChange(0.1) }, "+")), /* @__PURE__ */ import_react.default.createElement("div", { className: "map-viewport" }, /* @__PURE__ */ import_react.default.createElement(
       "div",
       {
         className: "map-inner" + (selectedDepartment ? " map-inner--dept-filter" : ""),
@@ -24047,13 +24268,16 @@
         const key = makeBookingKey(res.id, selectedDate);
         const userIntervals = bookings[key] || [];
         const deptIntervalsForRes = getDeptBookingsForResource(res.id);
-        const intervals = [...userIntervals, ...deptIntervalsForRes];
-        const isSelected = res.id === selectedResourceId;
         let isBookedForInterval = false;
+        let hasRequestBookingForInterval = false;
         if (hasValidInterval) {
           const s = parseTimeToMinutes(startTime);
           const e = parseTimeToMinutes(endTime);
-          isBookedForInterval = intervals.some(
+          const allForInterval = [
+            ...deptIntervalsForRes,
+            ...userIntervals
+          ];
+          isBookedForInterval = allForInterval.some(
             (b) => intervalsOverlap(
               s,
               e,
@@ -24061,12 +24285,29 @@
               parseTimeToMinutes(b.end)
             )
           );
+          hasRequestBookingForInterval = userIntervals.some(
+            (b) => b.isRequest && intervalsOverlap(
+              s,
+              e,
+              parseTimeToMinutes(b.start),
+              parseTimeToMinutes(b.end)
+            )
+          );
         }
-        const isBooked = hasValidInterval ? isBookedForInterval : intervals.length > 0;
-        const isDeptHighlighted = selectedDepartment && departmentDeskIds.includes(res.id);
-        const isReqTypeRes = ["room", "wellness", "admin", "bub"].includes(
-          res.type
+        const hasAnyBookingThisDay = deptIntervalsForRes.length + userIntervals.length > 0;
+        const hasAnyRequestThisDay = userIntervals.some(
+          (b) => b.isRequest
         );
+        const isBooked = hasValidInterval ? isBookedForInterval : hasAnyBookingThisDay;
+        const isRequestBooked = hasValidInterval ? hasRequestBookingForInterval : hasAnyRequestThisDay;
+        const isSelected = res.id === selectedResourceId;
+        const isDeptHighlighted = selectedDepartment && departmentDeskIds.includes(res.id);
+        let availabilityClass = "resource-free";
+        if (isBooked && isRequestBooked) {
+          availabilityClass = "resource-booked-request";
+        } else if (isBooked) {
+          availabilityClass = "resource-booked";
+        }
         return /* @__PURE__ */ import_react.default.createElement(
           "button",
           {
@@ -24074,8 +24315,7 @@
             className: [
               "resource-pin",
               `resource-${res.type}`,
-              isBooked ? "resource-booked" : "resource-free",
-              isBooked && isReqTypeRes ? "resource-booked-request" : "",
+              availabilityClass,
               isSelected ? "resource-selected" : "",
               isDeptHighlighted ? "resource-dept-highlight" : ""
             ].filter(Boolean).join(" "),
@@ -24135,8 +24375,16 @@
       },
       hasValidInterval ? isSelectedBooked ? "Booked in this time interval" : "Available in this time interval" : isSelectedBooked ? "Has bookings for this date" : "No bookings for this date"
     ), bookingsForSelected.length > 0 && /* @__PURE__ */ import_react.default.createElement("ul", { className: "booking-list" }, bookingsForSelected.map((b, idx) => {
-      const isRequestForYou = isRequestType && b.user === "You";
-      return /* @__PURE__ */ import_react.default.createElement("li", { key: idx }, b.start, "-", b.end, " ", isRequestForYou ? "Request " : "", "(", b.user, b.department ? `, ${b.department}` : "", ")");
+      const isRequestBooking = b.isRequest;
+      let label = `${b.start}-${b.end}`;
+      if (isRequestBooking) {
+        if (b.status === "pending") {
+          label += " Request";
+        } else if (b.status === "approved") {
+          label += " Request approved";
+        }
+      }
+      return /* @__PURE__ */ import_react.default.createElement("li", { key: b.id || idx }, label, " (", b.user, b.department ? `, ${b.department}` : "", ")");
     }))), /* @__PURE__ */ import_react.default.createElement("div", { className: "booking-actions" }, /* @__PURE__ */ import_react.default.createElement(
       "button",
       {
@@ -24149,7 +24397,26 @@
         disabled: !canBook
       },
       primaryButtonLabel
-    ), /* @__PURE__ */ import_react.default.createElement("button", { className: "secondary-btn", onClick: handleCancel }, "Cancel this interval")), /* @__PURE__ */ import_react.default.createElement("p", { className: "hint" }, "Pick a date and time interval (e.g. 18:00\u201320:00). Pins turn green if they\u2019re free for that interval and red if they\u2019re booked by you or department employees. Selecting a department highlights that team\u2019s desks.")) : /* @__PURE__ */ import_react.default.createElement("p", null, "Select a desk or room on the map.")))));
+    ), /* @__PURE__ */ import_react.default.createElement("button", { className: "secondary-btn", onClick: handleCancel }, "Cancel this interval")), isBookingBlockedByRole && /* @__PURE__ */ import_react.default.createElement("p", { className: "hint hint--warning" }, "Employees cannot book or request management resources. Please ask an admin to handle these bookings."), isAdminUser && /* @__PURE__ */ import_react.default.createElement("div", { className: "booking-section admin-requests" }, /* @__PURE__ */ import_react.default.createElement("p", { className: "booking-label" }, "Pending room requests"), pendingRequests.length === 0 ? /* @__PURE__ */ import_react.default.createElement("p", { className: "admin-requests-empty" }, "No pending requests.") : /* @__PURE__ */ import_react.default.createElement("ul", { className: "admin-requests-list" }, pendingRequests.map((req) => {
+      const res = RESOURCES.find(
+        (r) => r.id === req.resourceId
+      );
+      return /* @__PURE__ */ import_react.default.createElement("li", { key: req.id, className: "admin-request-item" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "admin-request-main" }, /* @__PURE__ */ import_react.default.createElement("span", { className: "admin-request-room" }, res ? res.label : req.resourceId), /* @__PURE__ */ import_react.default.createElement("span", { className: "admin-request-time" }, req.date, " \u2022 ", req.start, "-", req.end), /* @__PURE__ */ import_react.default.createElement("span", { className: "admin-request-user" }, req.user)), /* @__PURE__ */ import_react.default.createElement("div", { className: "admin-request-actions" }, /* @__PURE__ */ import_react.default.createElement(
+        "button",
+        {
+          className: "admin-approve-btn",
+          onClick: () => handleApproveRequest(req)
+        },
+        "Approve"
+      ), /* @__PURE__ */ import_react.default.createElement(
+        "button",
+        {
+          className: "admin-deny-btn",
+          onClick: () => handleDenyRequest(req)
+        },
+        "Deny"
+      )));
+    }))), /* @__PURE__ */ import_react.default.createElement("p", { className: "hint" }, "Pick a date and time interval (e.g. 18:00\u201320:00). Pins turn green if they\u2019re free and red if booked. If there is a pending or approved request, they glow yellow. Selecting a department highlights that team\u2019s desks.")) : /* @__PURE__ */ import_react.default.createElement("p", null, "Select a desk or room on the map.")))));
   }
   var App_default = App;
 

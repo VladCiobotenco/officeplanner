@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import "./App.css";
 import floorplanImg from "./floorplan.jpeg";
 
@@ -330,18 +330,18 @@ const RESOURCES = [
 const DEPARTMENT_BOOKINGS = {
   Finance: [
     { employee: "Ana F.", deskId: "desk-t-01", start: "09:00", end: "11:00" },
-    { employee: "Mihai F.", deskId: "desk-t-22", start: "11:00", end: "13:00" },
-    { employee: "Ioana F.", deskId: "desk-t-12", start: "14:00", end: "17:00" },
+    { employee: "Mihai F.", deskId: "desk-t-02", start: "11:00", end: "13:00" },
+    { employee: "Ioana F.", deskId: "desk-t-03", start: "14:00", end: "17:00" },
   ],
   Commercial: [
     { employee: "Andrei C.", deskId: "desk-t-04", start: "09:00", end: "12:00" },
-    { employee: "Bianca C.", deskId: "desk-t-27", start: "12:00", end: "15:00" },
-    { employee: "Radu C.", deskId: "desk-t-46", start: "15:00", end: "18:00" },
+    { employee: "Bianca C.", deskId: "desk-t-05", start: "12:00", end: "15:00" },
+    { employee: "Radu C.", deskId: "desk-t-06", start: "15:00", end: "18:00" },
   ],
   HR: [
-    { employee: "Alexandra H.", deskId: "desk-b-12", start: "08:30", end: "11:30" },
-    { employee: "George H.", deskId: "desk-b-58", start: "11:30", end: "14:30" },
-    { employee: "Laura H.", deskId: "desk-b-26", start: "14:30", end: "17:30" },
+    { employee: "Alexandra H.", deskId: "desk-t-07", start: "08:30", end: "11:30" },
+    { employee: "George H.", deskId: "desk-t-08", start: "11:30", end: "14:30" },
+    { employee: "Laura H.", deskId: "desk-t-09", start: "14:30", end: "17:30" },
   ],
   IT: [
     { employee: "Vlad I.", deskId: "desk-t-10", start: "09:00", end: "13:00" },
@@ -361,6 +361,9 @@ const DEPARTMENT_BOOKINGS = {
 };
 
 const DEPARTMENTS = Object.keys(DEPARTMENT_BOOKINGS);
+
+const USERS_KEY = "officePlannerUsers";
+const CURRENT_USER_KEY = "officePlannerCurrentUser";
 
 // key is resource+date
 function makeBookingKey(resourceId, dateStr) {
@@ -398,20 +401,126 @@ function getDeptBookingsForResource(resourceId) {
 }
 
 function App() {
+  // -------- AUTH STATE --------
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authMode, setAuthMode] = useState("login"); // "login" | "signup"
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authName, setAuthName] = useState("");
+  const [authRole, setAuthRole] = useState("employee"); // "employee" | "admin"
+
+  // LOAD USER FROM LOCALSTORAGE ON MOUNT
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(CURRENT_USER_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.email) {
+          setCurrentUser(parsed);
+        }
+      }
+    } catch (e) {
+      console.error("Error loading current user", e);
+    }
+  }, []);
+
+  const currentUserLabel =
+    currentUser?.name || currentUser?.email || "You";
+
+  // AUTH HELPERS
+  const getStoredUsers = () => {
+    try {
+      const raw = localStorage.getItem(USERS_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const saveUsers = (users) => {
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  };
+
+  const handleSignupSubmit = (e) => {
+    e.preventDefault();
+
+    if (!authName.trim() || !authEmail.trim() || !authPassword.trim()) {
+      alert("Please fill in all fields.");
+      return;
+    }
+
+    const users = getStoredUsers();
+    const exists = users.some(
+      (u) => u.email.toLowerCase() === authEmail.trim().toLowerCase()
+    );
+    if (exists) {
+      alert("An account with this email already exists.");
+      return;
+    }
+
+    const newUser = {
+      name: authName.trim(),
+      email: authEmail.trim(),
+      password: authPassword, // demo only
+      role: authRole === "admin" ? "admin" : "employee",
+    };
+
+    const updatedUsers = [...users, newUser];
+    saveUsers(updatedUsers);
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(newUser));
+    setCurrentUser(newUser);
+
+    setAuthPassword("");
+  };
+
+  const handleLoginSubmit = (e) => {
+    e.preventDefault();
+
+    if (!authEmail.trim() || !authPassword.trim()) {
+      alert("Please enter email and password.");
+      return;
+    }
+
+    const users = getStoredUsers();
+    const found = users.find(
+      (u) =>
+        u.email.toLowerCase() === authEmail.trim().toLowerCase() &&
+        u.password === authPassword
+    );
+
+    if (!found) {
+      alert("Invalid email or password.");
+      return;
+    }
+
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(found));
+    setCurrentUser(found);
+
+    setAuthPassword("");
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem(CURRENT_USER_KEY);
+  };
+
+  // -------- BOOKING STATE --------
   const [selectedResourceId, setSelectedResourceId] = useState(
     RESOURCES[0]?.id || null
   );
   const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+    new Date().toISOString().slice(0, 10)
   );
   const [startTime, setStartTime] = useState("18:00");
   const [endTime, setEndTime] = useState("20:00");
   const [zoom, setZoom] = useState(1);
 
-  // department "view" filter (for highlighting & list)
+  // department "view" filter
   const [selectedDepartment, setSelectedDepartment] = useState("");
 
-  // user-created bookings: { key: [ { resourceId, date, start, end, user } ] }
+  // user-created bookings: { key: [ { id, resourceId, date, start, end, user, isRequest, status } ] }
   const [bookings, setBookings] = useState({});
 
   const selectedResource = useMemo(
@@ -419,11 +528,24 @@ function App() {
     [selectedResourceId]
   );
 
-  const isRequestType =
-  selectedResource &&
-  ["room", "wellness", "admin", "bub"].includes(selectedResource.type);
+  const isAdminUser = currentUser?.role === "admin";
 
-const primaryButtonLabel = isRequestType ? "Request" : "Book interval";
+  // base request types are room/wellness/admin/bub
+  const baseRequestType =
+    selectedResource &&
+    ["room", "wellness", "admin", "bub"].includes(selectedResource.type);
+
+  // Only employees treat these as "requests". Admins always do normal bookings.
+  const isRequestType = baseRequestType && !isAdminUser;
+
+  // treat admin/management types as protected for employees
+  const isManagementResource =
+    selectedResource &&
+    (selectedResource.type === "admin" || selectedResource.type === "management");
+
+  const isBookingBlockedByRole = !isAdminUser && isManagementResource;
+
+  const primaryButtonLabel = isRequestType ? "Request" : "Book interval";
 
   const bookingKeyForSelected = useMemo(() => {
     if (!selectedResource) return null;
@@ -450,10 +572,9 @@ const primaryButtonLabel = isRequestType ? "Request" : "Book interval";
     endTime &&
     parseTimeToMinutes(endTime) > parseTimeToMinutes(startTime);
 
-  // is there something booked overlapping the selected interval (user + employees)
+  // is there something booked overlapping the selected interval
   const isSelectedBooked = useMemo(() => {
     if (!hasValidInterval) {
-      // invalid interval -> we don't care about overlap yet
       return bookingsForSelected.length > 0;
     }
 
@@ -471,9 +592,23 @@ const primaryButtonLabel = isRequestType ? "Request" : "Book interval";
   }, [bookingsForSelected, hasValidInterval, startTime, endTime]);
 
   const canBook =
-    !!selectedResource && !!selectedDate && hasValidInterval && !isSelectedBooked;
+    !!selectedResource &&
+    !!selectedDate &&
+    hasValidInterval &&
+    !isSelectedBooked &&
+    !isBookingBlockedByRole;
 
   const handleBook = () => {
+    if (!currentUser) {
+      alert("Please log in to book.");
+      return;
+    }
+
+    if (isBookingBlockedByRole) {
+      alert("You don't have permission to book or request management resources.");
+      return;
+    }
+
     if (!selectedResource || !selectedDate) return;
     if (!startTime || !endTime) {
       alert("Please choose start and end time.");
@@ -508,29 +643,39 @@ const primaryButtonLabel = isRequestType ? "Request" : "Book interval";
       return;
     }
 
-    const userName = "You"; // replace with real user later
+    const userName = currentUserLabel;
+    const isReq = isRequestType; // false for admins, true for employees on request-types
+    const id =
+      Date.now().toString() + Math.random().toString(16).slice(2);
 
     setBookings((prev) => ({
       ...prev,
       [key]: [
         ...(prev[key] || []),
         {
+          id,
           resourceId: selectedResource.id,
           date: selectedDate,
           start: startTime,
           end: endTime,
           user: userName,
+          isRequest: isReq,
+          status: isReq ? "pending" : "confirmed",
         },
       ],
     }));
   };
 
   const handleCancel = () => {
+    if (!currentUser) {
+      alert("Please log in to cancel your bookings.");
+      return;
+    }
     if (!selectedResource || !selectedDate) return;
     const key = makeBookingKey(selectedResource.id, selectedDate);
     const existing = bookings[key] || [];
 
-    const userName = "You";
+    const userName = currentUserLabel;
     const filtered = existing.filter(
       (b) => !(b.start === startTime && b.end === endTime && b.user === userName)
     );
@@ -569,10 +714,181 @@ const primaryButtonLabel = isRequestType ? "Request" : "Book interval";
     [departmentBookings]
   );
 
+  // pending requests for admin (isRequest && status === "pending")
+  const pendingRequests = useMemo(() => {
+    const list = [];
+    for (const arr of Object.values(bookings)) {
+      for (const b of arr) {
+        if (b.isRequest && b.status === "pending") {
+          list.push(b);
+        }
+      }
+    }
+    list.sort((a, b) => {
+      if (a.date < b.date) return -1;
+      if (a.date > b.date) return 1;
+      if (a.start < b.start) return -1;
+      if (a.start > b.start) return 1;
+      return 0;
+    });
+    return list;
+  }, [bookings]);
+
+  const handleApproveRequest = (req) => {
+    const key = makeBookingKey(req.resourceId, req.date);
+    setBookings((prev) => {
+      const arr = prev[key] || [];
+      const newArr = arr.map((b) =>
+        b.id === req.id ? { ...b, status: "approved" } : b
+      );
+      return { ...prev, [key]: newArr };
+    });
+  };
+
+  const handleDenyRequest = (req) => {
+    const key = makeBookingKey(req.resourceId, req.date);
+    setBookings((prev) => {
+      const arr = prev[key] || [];
+      const newArr = arr.filter((b) => b.id !== req.id);
+      const copy = { ...prev };
+      if (newArr.length > 0) {
+        copy[key] = newArr;
+      } else {
+        delete copy[key];
+      }
+      return copy;
+    });
+  };
+
+  // ------------- AUTH SCREEN -------------
+  if (!currentUser) {
+    return (
+      <div className="app">
+        <div className="map-wrapper">
+          <h1 className="map-title">Office Planner</h1>
+
+          <div className="auth-card">
+            <div className="auth-toggle">
+              <button
+                type="button"
+                className={
+                  "auth-toggle-btn " +
+                  (authMode === "login" ? "auth-toggle-btn--active" : "")
+                }
+                onClick={() => setAuthMode("login")}
+              >
+                Log in
+              </button>
+              <button
+                type="button"
+                className={
+                  "auth-toggle-btn " +
+                  (authMode === "signup" ? "auth-toggle-btn--active" : "")
+                }
+                onClick={() => setAuthMode("signup")}
+              >
+                Create account
+              </button>
+            </div>
+
+            <form
+              className="auth-form"
+              onSubmit={
+                authMode === "login" ? handleLoginSubmit : handleSignupSubmit
+              }
+            >
+              {authMode === "signup" && (
+                <div className="auth-field">
+                  <label htmlFor="auth-name">Name</label>
+                  <input
+                    id="auth-name"
+                    type="text"
+                    value={authName}
+                    onChange={(e) => setAuthName(e.target.value)}
+                    placeholder="Your name"
+                  />
+                </div>
+              )}
+
+              <div className="auth-field">
+                <label htmlFor="auth-email">Email</label>
+                <input
+                  id="auth-email"
+                  type="email"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  placeholder="you@company.com"
+                />
+              </div>
+
+              <div className="auth-field">
+                <label htmlFor="auth-password">Password</label>
+                <input
+                  id="auth-password"
+                  type="password"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  placeholder="••••••••"
+                />
+              </div>
+
+              {authMode === "signup" && (
+                <div className="auth-field auth-role-field">
+                  <span className="auth-role-label">Role</span>
+                  <label className="auth-role-option">
+                    <input
+                      type="radio"
+                      name="role"
+                      value="employee"
+                      checked={authRole === "employee"}
+                      onChange={() => setAuthRole("employee")}
+                    />
+                    <span>Employee</span>
+                  </label>
+                  <label className="auth-role-option">
+                    <input
+                      type="radio"
+                      name="role"
+                      value="admin"
+                      checked={authRole === "admin"}
+                      onChange={() => setAuthRole("admin")}
+                    />
+                    <span>Admin</span>
+                  </label>
+                </div>
+              )}
+
+              <button type="submit" className="auth-submit">
+                {authMode === "login" ? "Enter office" : "Create account"}
+              </button>
+
+            
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ------------- MAIN APP (LOGGED IN) -------------
   return (
     <div className="app">
       <div className="map-wrapper">
         <h1 className="map-title">Office Planner</h1>
+
+        <div className="user-bar">
+          <div className="user-bar-info">
+            <span className="user-bar-name">
+              {currentUser.name || currentUser.email}
+            </span>
+            <span className="user-bar-role">
+              {currentUser.role === "admin" ? "Admin" : "Employee"}
+            </span>
+          </div>
+          <button className="user-bar-logout" onClick={handleLogout}>
+            Log out
+          </button>
+        </div>
 
         <div className="layout">
           {/* LEFT – MAP */}
@@ -599,90 +915,120 @@ const primaryButtonLabel = isRequestType ? "Request" : "Book interval";
                 />
 
                 {RESOURCES.map((res) => {
-  const key = makeBookingKey(res.id, selectedDate);
-  const userIntervals = bookings[key] || [];
-  const deptIntervalsForRes = getDeptBookingsForResource(res.id);
-  const intervals = [...userIntervals, ...deptIntervalsForRes];
+                  const key = makeBookingKey(res.id, selectedDate);
+                  const userIntervals = bookings[key] || [];
+                  const deptIntervalsForRes = getDeptBookingsForResource(res.id);
 
-  const isSelected = res.id === selectedResourceId;
+                  // booked for this interval?
+                  let isBookedForInterval = false;
+                  let hasRequestBookingForInterval = false;
 
-  let isBookedForInterval = false;
+                  if (hasValidInterval) {
+                    const s = parseTimeToMinutes(startTime);
+                    const e = parseTimeToMinutes(endTime);
 
-  if (hasValidInterval) {
-    const s = parseTimeToMinutes(startTime);
-    const e = parseTimeToMinutes(endTime);
+                    // dept bookings + user bookings for availability
+                    const allForInterval = [
+                      ...deptIntervalsForRes,
+                      ...userIntervals,
+                    ];
 
-    isBookedForInterval = intervals.some((b) =>
-      intervalsOverlap(
-        s,
-        e,
-        parseTimeToMinutes(b.start),
-        parseTimeToMinutes(b.end)
-      )
-    );
-  }
+                    isBookedForInterval = allForInterval.some((b) =>
+                      intervalsOverlap(
+                        s,
+                        e,
+                        parseTimeToMinutes(b.start),
+                        parseTimeToMinutes(b.end)
+                      )
+                    );
 
-  const isBooked = hasValidInterval
-    ? isBookedForInterval
-    : intervals.length > 0;
+                    // only user bookings can be requests
+                    hasRequestBookingForInterval = userIntervals.some(
+                      (b) =>
+                        b.isRequest &&
+                        intervalsOverlap(
+                          s,
+                          e,
+                          parseTimeToMinutes(b.start),
+                          parseTimeToMinutes(b.end)
+                        )
+                    );
+                  }
 
-  const isDeptHighlighted =
-    selectedDepartment && departmentDeskIds.includes(res.id);
+                  const hasAnyBookingThisDay =
+                    deptIntervalsForRes.length + userIntervals.length > 0;
 
-  // request-type resources: room, wellness, admin, bub
-  const isReqTypeRes = ["room", "wellness", "admin", "bub"].includes(
-    res.type
-  );
+                  const hasAnyRequestThisDay = userIntervals.some(
+                    (b) => b.isRequest
+                  );
 
-  return (
-    <button
-      key={res.id}
-      className={[
-        "resource-pin",
-        `resource-${res.type}`,
-        isBooked ? "resource-booked" : "resource-free",
-        isBooked && isReqTypeRes ? "resource-booked-request" : "",
-        isSelected ? "resource-selected" : "",
-        isDeptHighlighted ? "resource-dept-highlight" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-      style={{
-        left: `${res.x}%`,
-        top: `${res.y}%`,
-      }}
-      onClick={() => setSelectedResourceId(res.id)}
-      title={`${res.label} • ${
-        hasValidInterval
-          ? isBooked
-            ? "Not available in this interval"
-            : "Available in this interval"
-          : isBooked
-          ? "Has bookings this day"
-          : "No bookings this day"
-      }`}
-    >
-      <span className="resource-pin-label">
-        {res.type === "desk"
-          ? "D"
-          : res.type === "room"
-          ? "R"
-          : res.type === "admin"
-          ? "A"
-          : res.type === "bub"
-          ? "B"
-          : res.type === "wellness"
-          ? "W"
-          : res.type === "bigroom"
-          ? "B"
-          : res.type === "beerpong"
-          ? "BZ"
-          : "."}
-      </span>
-    </button>
-  );
-})}
+                  const isBooked = hasValidInterval
+                    ? isBookedForInterval
+                    : hasAnyBookingThisDay;
 
+                  const isRequestBooked = hasValidInterval
+                    ? hasRequestBookingForInterval
+                    : hasAnyRequestThisDay;
+
+                  const isSelected = res.id === selectedResourceId;
+
+                  const isDeptHighlighted =
+                    selectedDepartment && departmentDeskIds.includes(res.id);
+
+                  let availabilityClass = "resource-free";
+                  if (isBooked && isRequestBooked) {
+                    availabilityClass = "resource-booked-request";
+                  } else if (isBooked) {
+                    availabilityClass = "resource-booked";
+                  }
+
+                  return (
+                    <button
+                      key={res.id}
+                      className={[
+                        "resource-pin",
+                        `resource-${res.type}`,
+                        availabilityClass,
+                        isSelected ? "resource-selected" : "",
+                        isDeptHighlighted ? "resource-dept-highlight" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      style={{
+                        left: `${res.x}%`,
+                        top: `${res.y}%`,
+                      }}
+                      onClick={() => setSelectedResourceId(res.id)}
+                      title={`${res.label} • ${
+                        hasValidInterval
+                          ? isBooked
+                            ? "Not available in this interval"
+                            : "Available in this interval"
+                          : isBooked
+                          ? "Has bookings this day"
+                          : "No bookings this day"
+                      }`}
+                    >
+                      <span className="resource-pin-label">
+                        {res.type === "desk"
+                          ? "D"
+                          : res.type === "room"
+                          ? "R"
+                          : res.type === "admin"
+                          ? "A"
+                          : res.type === "bub"
+                          ? "B"
+                          : res.type === "wellness"
+                          ? "W"
+                          : res.type === "bigroom"
+                          ? "B"
+                          : res.type === "beerpong"
+                          ? "BZ"
+                          : "."}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -750,7 +1096,7 @@ const primaryButtonLabel = isRequestType ? "Request" : "Book interval";
                   </div>
                 </div>
 
-                {/* Department view (after time interval) */}
+                {/* Department view */}
                 <div className="booking-section">
                   <label className="booking-label" htmlFor="department">
                     Department view
@@ -814,48 +1160,107 @@ const primaryButtonLabel = isRequestType ? "Request" : "Book interval";
                   </p>
 
                   {bookingsForSelected.length > 0 && (
-                      <ul className="booking-list">
-                        {bookingsForSelected.map((b, idx) => {
-                          // for room / wellness / admin / bub and only for your own bookings
-                          const isRequestForYou = isRequestType && b.user === "You";
+                    <ul className="booking-list">
+                      {bookingsForSelected.map((b, idx) => {
+                        const isRequestBooking = b.isRequest;
+                        let label = `${b.start}-${b.end}`;
 
+                        if (isRequestBooking) {
+                          if (b.status === "pending") {
+                            // XX:XX-XX:XX Request (You)
+                            label += " Request";
+                          } else if (b.status === "approved") {
+                            label += " Request approved";
+                          }
+                        }
+
+                        return (
+                          <li key={b.id || idx}>
+                            {label} ({b.user}
+                            {b.department ? `, ${b.department}` : ""})
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="booking-actions">
+                  <button
+                    className={[
+                      "primary-btn",
+                      isRequestType ? "primary-btn--request" : "",
+                      !canBook ? "primary-btn--blocked" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onClick={handleBook}
+                    disabled={!canBook}
+                  >
+                    {primaryButtonLabel}
+                  </button>
+                  <button className="secondary-btn" onClick={handleCancel}>
+                    Cancel this interval
+                  </button>
+                </div>
+
+                {isBookingBlockedByRole && (
+                  <p className="hint hint--warning">
+                    Employees cannot book or request management resources. Please
+                    ask an admin to handle these bookings.
+                  </p>
+                )}
+
+                {isAdminUser && (
+                  <div className="booking-section admin-requests">
+                    <p className="booking-label">Pending room requests</p>
+                    {pendingRequests.length === 0 ? (
+                      <p className="admin-requests-empty">No pending requests.</p>
+                    ) : (
+                      <ul className="admin-requests-list">
+                        {pendingRequests.map((req) => {
+                          const res = RESOURCES.find(
+                            (r) => r.id === req.resourceId
+                          );
                           return (
-                            <li key={idx}>
-                              {b.start}-{b.end} {isRequestForYou ? "Request " : ""}
-                              ({b.user}
-                              {b.department ? `, ${b.department}` : ""})
+                            <li key={req.id} className="admin-request-item">
+                              <div className="admin-request-main">
+                                <span className="admin-request-room">
+                                  {res ? res.label : req.resourceId}
+                                </span>
+                                <span className="admin-request-time">
+                                  {req.date} • {req.start}-{req.end}
+                                </span>
+                                <span className="admin-request-user">
+                                  {req.user}
+                                </span>
+                              </div>
+                              <div className="admin-request-actions">
+                                <button
+                                  className="admin-approve-btn"
+                                  onClick={() => handleApproveRequest(req)}
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  className="admin-deny-btn"
+                                  onClick={() => handleDenyRequest(req)}
+                                >
+                                  Deny
+                                </button>
+                              </div>
                             </li>
                           );
                         })}
                       </ul>
-                  )}
-
-                </div>
-
-                <div className="booking-actions">
-                    <button
-                      className={[
-                        "primary-btn",
-                        isRequestType ? "primary-btn--request" : "",
-                        !canBook ? "primary-btn--blocked" : "",
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                      onClick={handleBook}
-                      disabled={!canBook}
-                    >
-                      {primaryButtonLabel}
-                    </button>
-                    <button className="secondary-btn" onClick={handleCancel}>
-                      Cancel this interval
-                    </button>
+                    )}
                   </div>
-
+                )}
 
                 <p className="hint">
                   Pick a date and time interval (e.g. 18:00–20:00). Pins turn
-                  green if they’re free for that interval and red if they’re
-                  booked by you or department employees. Selecting a department
+                  green if they’re free and red if booked. If there is a pending
+                  or approved request, they glow yellow. Selecting a department
                   highlights that team’s desks.
                 </p>
               </>
